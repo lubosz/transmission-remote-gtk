@@ -52,7 +52,7 @@
 #define GRAPH_LINE_WIDTH              3
 #define GRAPH_FRAME_WIDTH             4
 
-G_DEFINE_TYPE(TrgTorrentGraph, trg_torrent_graph, GTK_TYPE_VBOX)
+G_DEFINE_TYPE(TrgTorrentGraph, trg_torrent_graph, GTK_TYPE_BOX)
 #define TRG_TORRENT_GRAPH_GET_PRIVATE(o)                                                           \
     (G_TYPE_INSTANCE_GET_PRIVATE((o), TRG_TYPE_TORRENT_GRAPH, TrgTorrentGraphPrivate))
 typedef struct _TrgTorrentGraphPrivate TrgTorrentGraphPrivate;

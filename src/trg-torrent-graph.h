@@ -23,11 +23,11 @@ G_BEGIN_DECLS
 #define TRG_TORRENT_GRAPH_GET_CLASS(obj)                                                           \
     (G_TYPE_INSTANCE_GET_CLASS((obj), TRG_TYPE_TORRENT_GRAPH, TrgTorrentGraphClass))
 typedef struct {
-    GtkVBox parent;
+    GtkBox parent;
 } TrgTorrentGraph;
 
 typedef struct {
-    GtkVBoxClass parent_class;
+    GtkBoxClass parent_class;
 } TrgTorrentGraphClass;
 
 GType trg_torrent_graph_get_type(void);
