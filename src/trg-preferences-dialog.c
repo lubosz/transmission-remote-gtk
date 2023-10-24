@@ -632,10 +632,10 @@ static GtkWidget *trg_prefs_viewPage(TrgPreferencesDialog *dlg)
                           TRG_PREFS_GLOBAL, NULL);
     g_signal_connect(G_OBJECT(tray), "toggled", G_CALLBACK(toggle_tray_icon), priv->win);
 
-    if (!HAVE_LIBAPPINDICATOR) {
-        gtk_widget_set_sensitive(tray, FALSE);
-        gtk_widget_set_tooltip_text(tray, _("System tray not supported."));
-    }
+//    if (!HAVE_LIBAPPINDICATOR) {
+//        gtk_widget_set_sensitive(tray, FALSE);
+//        gtk_widget_set_tooltip_text(tray, _("System tray not supported."));
+//    }
 
     hig_workarea_add_wide_control(t, &row, tray);
 
