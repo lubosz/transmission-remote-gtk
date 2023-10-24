@@ -89,8 +89,8 @@ conf_data.set('GTK_DISABLE_DEPRECATED', not debug)
 conf_data.set10('HAVE_GEOIP', geoip_dep.found())
 conf_data.set10('ENABLE_NL_LANGINFO', nl_langinfo)
 
-conf_data.set10('HAVE_LIBAPPINDICATOR', libappindicator_dep.found())
-conf_data.set10('HAVE_LIBAYATANA_APPINDICATOR', libappindicator_dep.found() and libappindicator_dep.name() == 'ayatana-appindicator3-0.1')
+#conf_data.set10('HAVE_LIBAPPINDICATOR', False)
+#conf_data.set10('HAVE_LIBAYATANA_APPINDICATOR', libappindicator_dep.found() and libappindicator_dep.name() == 'ayatana-appindicator3-0.1')
 
 # compiler/linker flags
 flags = ['-funsigned-char',
