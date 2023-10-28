@@ -199,7 +199,6 @@ typedef struct {
     GtkWidget *filterEntry;
 
     gboolean hidden;
-    gint width, height;
     guint timerId;
     guint sessionTimerId;
     gboolean min_on_start;
@@ -309,8 +308,12 @@ static void destroy_window(TrgMainWindow *win, gpointer data G_GNUC_UNUSED)
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     TrgPrefs *prefs = trg_client_get_prefs(priv->client);
 
-    trg_prefs_set_int(prefs, TRG_PREFS_KEY_WINDOW_HEIGHT, priv->height, TRG_PREFS_GLOBAL);
-    trg_prefs_set_int(prefs, TRG_PREFS_KEY_WINDOW_WIDTH, priv->width, TRG_PREFS_GLOBAL);
+    int default_width = 0;
+    int default_height = 0;
+    gtk_window_get_default_size(GTK_WINDOW(win), &default_width, &default_height);
+
+    trg_prefs_set_int(prefs, TRG_PREFS_KEY_WINDOW_HEIGHT, default_height, TRG_PREFS_GLOBAL);
+    trg_prefs_set_int(prefs, TRG_PREFS_KEY_WINDOW_WIDTH, default_width, TRG_PREFS_GLOBAL);
     trg_prefs_set_int(prefs, TRG_PREFS_KEY_NOTEBOOK_PANED_POS,
                       gtk_paned_get_position(GTK_PANED(priv->vpaned)), TRG_PREFS_GLOBAL);
     trg_prefs_set_int(prefs, TRG_PREFS_KEY_STATES_PANED_POS,
@@ -2073,17 +2076,6 @@ TrgStateSelector *trg_main_window_get_state_selector(TrgMainWindow *win)
     return priv->stateSelector;
 }
 
-/* Couldn't find a way to get the width/height on exit, so save the
- * values of this event for when that happens. */
-static gboolean trg_main_window_config_event(TrgMainWindow *win, GdkEvent *event,
-                                             gpointer user_data G_GNUC_UNUSED)
-{
-    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
-    priv->width = event->configure.width;
-    priv->height = event->configure.height;
-    return FALSE;
-}
-
 static void trg_client_session_updated_cb(TrgClient *tc, JsonObject *session, TrgMainWindow *win)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
@@ -2175,8 +2167,6 @@ static GObject *trg_main_window_constructor(GType type, guint n_construct_proper
 
     g_signal_connect(G_OBJECT(self), "delete-event", G_CALLBACK(delete_event), NULL);
     g_signal_connect(G_OBJECT(self), "destroy", G_CALLBACK(destroy_window), NULL);
-    g_signal_connect(G_OBJECT(self), "configure-event", G_CALLBACK(trg_main_window_config_event),
-                     NULL);
     g_signal_connect(G_OBJECT(self), "key-press-event", G_CALLBACK(window_key_press_handler), NULL);
 
     priv->torrentModel = trg_torrent_model_new();
