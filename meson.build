@@ -82,6 +82,8 @@ conf_data.set('G_ENABLE_DEBUG', debug)
 conf_data.set('G_DISABLE_ASSERT', not debug)
 conf_data.set('G_DISABLE_CHECKS', not debug)
 conf_data.set('G_DISABLE_CAST_CHECKS', not debug)
+conf_data.set('GDK_DISABLE_DEPRECATED', not debug)
+conf_data.set('GTK_DISABLE_DEPRECATED', not debug)
 
 # compile time features
 conf_data.set10('HAVE_GEOIP', geoip_dep.found())
