@@ -137,6 +137,30 @@ JsonArray *build_json_id_array(TrgTorrentTreeView *tv)
     return ids;
 }
 
+static void trg_torrent_model_get_variant_id_array_foreach(GtkTreeModel *model,
+                                                        GtkTreePath *path G_GNUC_UNUSED,
+                                                        GtkTreeIter *iter, gpointer builder_pointer)
+{
+    GVariantBuilder *builder = (GVariantBuilder*)builder_pointer;
+    gint64 id;
+    gtk_tree_model_get(model, iter, TORRENT_COLUMN_ID, &id, -1);
+    g_variant_builder_add(builder, "i", (gint32) id);
+}
+
+GVariant *build_variant_id_array(TrgTorrentTreeView *tv)
+{
+    GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tv));
+
+    GVariantBuilder *builder = g_variant_builder_new (G_VARIANT_TYPE ("ai"));
+
+    gtk_tree_selection_selected_foreach(
+        selection, (GtkTreeSelectionForeachFunc)trg_torrent_model_get_variant_id_array_foreach, builder);
+
+    GVariant *variant = g_variant_new ("ai", builder);
+    g_object_unref(builder);
+    return variant;
+}
+
 static void setup_classic_layout(TrgTorrentTreeView *tv)
 {
     gtk_tree_view_set_rubber_banding(GTK_TREE_VIEW(tv), TRUE);

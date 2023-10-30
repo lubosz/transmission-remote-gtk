@@ -52,6 +52,7 @@ GType trg_torrent_tree_view_get_type(void);
 
 TrgTorrentTreeView *trg_torrent_tree_view_new(TrgClient *tc, GtkTreeModel *model);
 JsonArray *build_json_id_array(TrgTorrentTreeView *tv);
+GVariant *build_variant_id_array(TrgTorrentTreeView *tv);
 
 G_END_DECLS
 #endif /* _TRG_TORRENT_TREE_VIEW_H_ */

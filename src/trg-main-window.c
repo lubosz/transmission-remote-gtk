@@ -136,7 +136,7 @@ static GMenuItem *trg_imagemenuitem_new(GMenu *menu,
 static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
                                  gfloat limit);
 static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
-                                 gchar *speedKey, JsonArray *ids);
+                                 gchar *speedKey, GVariant *ids_variant);
 static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
                                      TrgMainWindow *win);
 #if HAVE_LIBAPPINDICATOR
@@ -227,6 +227,13 @@ enum {
     PROP_MINIMISE_ON_START
 };
 
+typedef struct {
+    gchar *speedKey;
+    gchar *enabledKey;
+    int *limit_ids;
+    gint limit;
+} LimitActionParameter;
+
 static GActionEntry actions[] = {
     {"open-properties", open_props_cb, NULL, NULL, NULL},
     {"copy-magnet-link", copy_magnetlink_cb, NULL, NULL, NULL},
@@ -243,7 +250,7 @@ static GActionEntry actions[] = {
     {"queue-top", top_queue_cb, NULL, NULL, NULL},
     {"queue-bottom", bottom_queue_cb, NULL, NULL, NULL},
     {"exec-cmd", exec_cmd_cb, NULL, NULL, NULL},
-    {"set-limit", exec_cmd_cb, NULL, NULL, NULL},
+    {"set-limit", set_limit_cb, "(ssaii)", NULL, NULL},
     {"set-priority", set_priority_cb, NULL, NULL, NULL},
 };
 
@@ -1613,6 +1620,9 @@ static GMenuItem *trg_imagemenuitem_new(GMenu *menu,
 
 static void set_limit_cb(GSimpleAction *action, GVariant *parameter, gpointer win)
 {
+
+    printf("set_limit_cb called!!11s\n");
+
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     // TODO: Action parameters
@@ -1677,7 +1687,6 @@ static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 current
 
     trg_strlspeed(speed, limit);
 
-    // item = gtk_check_menu_item_new_with_label(speed);
     item = g_menu_item_new(speed, NULL);
 
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER((gint)limit));
@@ -1733,7 +1742,7 @@ static GMenuItem *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
 }
 
 static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
-                                 gchar *speedKey, JsonArray *ids)
+                                 gchar *speedKey, GVariant *ids_variant)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     TrgClient *client = priv->client;
@@ -1744,7 +1753,7 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
     GMenu *menu;
     gint64 limit;
 
-    if (ids)
+    if (ids_variant)
         get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &current,
                          &iter);
     else
@@ -1754,17 +1763,39 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
         ? json_object_get_int_member(current, speedKey)
         : -1;
 
-    toplevel = g_menu_item_new(title, "win.set-limit");
+    toplevel = g_menu_item_new(title, NULL);
     // TODO: Icons "network-workgroup"
 
     menu = g_menu_new();
 
     // TODO: Action parameters
-    g_object_set_data_full(G_OBJECT(menu), "speedKey", g_strdup(speedKey), g_free);
-    g_object_set_data_full(G_OBJECT(menu), "enabledKey", g_strdup(enabledKey), g_free);
-    g_object_set_data_full(G_OBJECT(menu), "limit-ids", ids, (GDestroyNotify)json_array_unref);
+//    g_object_set_data_full(G_OBJECT(menu), "speedKey", g_strdup(speedKey), g_free);
+//    g_object_set_data_full(G_OBJECT(menu), "enabledKey", g_strdup(enabledKey), g_free);
+//    g_object_set_data_full(G_OBJECT(menu), "limit-ids", ids, (GDestroyNotify)json_array_unref);
 
-    item = g_menu_item_new(_("No Limit"), NULL);
+    g_print("ids_variant: %s\n", g_variant_print(ids_variant, TRUE));
+
+    GVariantBuilder *builder = g_variant_builder_new (G_VARIANT_TYPE ("ai"));
+
+    GVariantIter *viter = NULL;
+    gint val;
+    g_variant_get (ids_variant, "ai", &viter);
+    while (g_variant_iter_loop (viter, "i", &val))
+        g_variant_builder_add (builder, "i", val);
+    g_variant_iter_free (viter);
+
+    GVariant *variant = g_variant_new("(ssiai)", speedKey, enabledKey, -1, builder);
+
+    // Just to verify the content
+    gchar *printed_variant = g_variant_print(variant, TRUE);
+    g_print("%s\n", printed_variant);
+    g_free(printed_variant);
+
+    g_variant_builder_unref (builder);
+
+    printf("speedKey: %s enabledKey: %s\n", speedKey, enabledKey);
+
+    item = g_menu_item_new(_("No Limit"), "win.set-limit");
     //TODO: Active
     //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), limit < 0);
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER(-1));
@@ -1851,13 +1882,11 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
     TrgPrefs *prefs = trg_client_get_prefs(priv->client);
     GMenu *menu;
     gint n_cmds;
-    JsonArray *ids;
+    GVariant *ids;
     JsonArray *cmds;
 
     menu = g_menu_new();
     // gtk_menu_set_reserve_toggle_size(GTK_MENU(menu), FALSE);
-
-    ids = build_json_id_array(TRG_TORRENT_TREE_VIEW(treeview));
 
     trg_imagemenuitem_new(menu, _("Properties"), "document-properties", "win.open-properties");
     trg_imagemenuitem_new(menu, _("Copy Magnet Link"), "edit-copy", "win.copy-magnet-link");
@@ -1912,6 +1941,10 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
         // TODO: Section instead of seperator
         // g_menu_append_item(menu, gtk_separator_menu_item_new());
     }
+
+    //build_json_id_array(TRG_TORRENT_TREE_VIEW(treeview));
+    //ids = build_json_id_array(TRG_TORRENT_TREE_VIEW(treeview));
+    ids = build_variant_id_array(TRG_TORRENT_TREE_VIEW(treeview));
 
     g_menu_append_item(
         menu,
