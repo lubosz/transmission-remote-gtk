@@ -1754,7 +1754,11 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
     GMenu *menu;
     gint64 limit;
 
-    if (ids_variant)
+    GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->torrentTreeView));
+
+    gint selected_rows = gtk_tree_selection_count_selected_rows(selection);
+
+    if (selected_rows > 0)
         get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &current,
                          &iter);
     else
@@ -1776,23 +1780,12 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
 
     g_print("ids_variant: %s\n", g_variant_print(ids_variant, TRUE));
 
-    GVariantBuilder *builder = g_variant_builder_new (G_VARIANT_TYPE ("ai"));
-
-    GVariantIter *viter = NULL;
-    gint val;
-    g_variant_get (ids_variant, "ai", &viter);
-    while (g_variant_iter_loop (viter, "i", &val))
-        g_variant_builder_add (builder, "i", val);
-    g_variant_iter_free (viter);
-
-    GVariant *variant = g_variant_new("(ssiai)", speedKey, enabledKey, -1, builder);
+    GVariant *variant = g_variant_new("(ssi)", speedKey, enabledKey, -1);
 
     // Just to verify the content
     gchar *printed_variant = g_variant_print(variant, TRUE);
     g_print("%s\n", printed_variant);
     g_free(printed_variant);
-
-    g_variant_builder_unref (builder);
 
     printf("speedKey: %s enabledKey: %s\n", speedKey, enabledKey);
 
