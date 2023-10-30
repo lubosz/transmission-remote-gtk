@@ -1632,13 +1632,14 @@ static void set_limit_cb(GSimpleAction *action, GVariant *parameter, gpointer wi
     gint speed = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "limit"));
     gchar *speedKey = g_object_get_data(G_OBJECT(parent), "speedKey");
     gchar *enabledKey = g_object_get_data(G_OBJECT(parent), "enabledKey");
-    gpointer limitIds = g_object_get_data(G_OBJECT(parent), "limit-ids");
+
+    JsonArray *limitIds = build_json_id_array(TRG_TORRENT_TREE_VIEW(priv->torrentTreeView));
 
     JsonNode *req = NULL;
     JsonObject *args;
 
     if (limitIds)
-        req = torrent_set((JsonArray *)limitIds);
+        req = torrent_set(limitIds);
     else
         req = session_set();
 
