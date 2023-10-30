@@ -93,16 +93,8 @@ static void disconnect_cb(GtkWidget *w, gpointer data);
 static void open_local_prefs_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win);
 static void open_remote_prefs_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win);
 static TrgToolbar *trg_main_window_toolbar_new(TrgMainWindow *win);
-static void verify_cb(GtkWidget *w, TrgMainWindow *win);
-static void reannounce_cb(GtkWidget *w, TrgMainWindow *win);
-static void pause_cb(GtkWidget *w, TrgMainWindow *win);
-static void resume_cb(GtkWidget *w, TrgMainWindow *win);
-static void remove_cb(GtkWidget *w, TrgMainWindow *win);
 static void resume_all_cb(GtkWidget *w, TrgMainWindow *win);
 static void pause_all_cb(GtkWidget *w, TrgMainWindow *win);
-static void move_cb(GtkWidget *w, TrgMainWindow *win);
-static void delete_cb(GtkWidget *w, TrgMainWindow *win);
-static void open_props_cb(GtkWidget *w, TrgMainWindow *win);
 static gint confirm_action_dialog(GtkWindow *gtk_win, GtkTreeSelection *selection,
                                   const gchar *action_name, const gchar *action_label);
 static void view_stats_toggled_cb(GtkWidget *w, gpointer data);
@@ -137,8 +129,10 @@ static void quit_cb(GtkWidget *w, gpointer data);
 static TrgMenuBar *trg_main_window_menu_bar_new(TrgMainWindow *win);
 static void clear_filter_entry_cb(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *event,
                                   gpointer user_data);
-static GMenuItem *trg_imagemenuitem_new(GMenu *menu, const gchar *text, char *icon_name,
-                                        gboolean sensitive, GCallback cb, gpointer cbdata);
+static GMenuItem *trg_imagemenuitem_new(GMenu *menu,
+                                        const gchar *label,
+                                        const gchar *icon_name,
+                                        const gchar *action_name);
 static void set_limit_cb(GtkWidget *w, TrgMainWindow *win);
 static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
                                  gfloat limit);
@@ -154,6 +148,23 @@ static gboolean torrent_tv_button_pressed_cb(GtkWidget *treeview, GdkEventButton
 static gboolean torrent_tv_popup_menu_cb(GtkWidget *treeview, gpointer userdata);
 static void trg_main_window_set_hidden_to_tray(TrgMainWindow *win, gboolean hidden);
 static gboolean is_ready_for_torrent_action(TrgMainWindow *win);
+
+// Action callbacks
+static void open_props_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void copy_magnetlink_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void resume_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void pause_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void verify_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void reannounce_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void move_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void remove_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void delete_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void start_now_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void up_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void down_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void top_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void bottom_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+
 
 struct _TrgMainWindow {
     GtkApplicationWindow parent;
@@ -214,12 +225,26 @@ enum {
     PROP_MINIMISE_ON_START
 };
 
-static void print_hello(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+static void print_hello(GSimpleAction *action, GVariant *parameter, gpointer win_pointer) {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     g_print("Hello, GTK!\n");
 }
 
 static GActionEntry actions[] = {
-    {"hello", print_hello, NULL, NULL, NULL},
+    {"open-properties", open_props_cb, NULL, NULL, NULL},
+    {"copy-magnet-link", copy_magnetlink_cb, NULL, NULL, NULL},
+    {"resume", resume_cb, NULL, NULL, NULL},
+    {"pause", pause_cb, NULL, NULL, NULL},
+    {"verify", verify_cb, NULL, NULL, NULL},
+    {"reannounce", reannounce_cb, NULL, NULL, NULL},
+    {"move", move_cb, NULL, NULL, NULL},
+    {"remove", remove_cb, NULL, NULL, NULL},
+    {"delete", delete_cb, NULL, NULL, NULL},
+    {"start-now", start_now_cb, NULL, NULL, NULL},
+    {"queue-up", up_queue_cb, NULL, NULL, NULL},
+    {"queue-down", down_queue_cb, NULL, NULL, NULL},
+    {"queue-top", top_queue_cb, NULL, NULL, NULL},
+    {"queue-bottom", bottom_queue_cb, NULL, NULL, NULL},
 };
 
 static void reset_connect_args(TrgMainWindow *win)
@@ -344,8 +369,9 @@ static void destroy_window(TrgMainWindow *win, gpointer data G_GNUC_UNUSED)
     g_application_quit(g_application_get_default());
 }
 
-static void open_props_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void open_props_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     TrgTorrentPropsDialog *dialog;
 
@@ -358,9 +384,9 @@ static void open_props_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
     gtk_widget_show_all(GTK_WIDGET(dialog));
 }
 
-static void copy_magnetlink_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void copy_magnetlink_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
-    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
+    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(TRG_MAIN_WINDOW(win_pointer));
     JsonObject *json = NULL;
     GtkClipboard *clip = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
 
@@ -373,9 +399,11 @@ static void copy_magnetlink_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
 }
 
 static void torrent_tv_onRowActivated(GtkTreeView *treeview, GtkTreePath *path G_GNUC_UNUSED,
-                                      GtkTreeViewColumn *col G_GNUC_UNUSED, gpointer userdata)
+                                      GtkTreeViewColumn *col G_GNUC_UNUSED, gpointer win_pointer)
 {
-    open_props_cb(GTK_WIDGET(treeview), userdata);
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
+    GAction *action = g_action_map_lookup_action(G_ACTION_MAP(win), "open-properties");
+    g_action_activate(action, NULL);
 }
 
 static void add_url_cb(GtkWidget *w G_GNUC_UNUSED, gpointer data)
@@ -396,13 +424,13 @@ static void add_cb(GtkWidget *w G_GNUC_UNUSED, gpointer data)
         trg_torrent_add_dialog(win, priv->client);
 }
 
-static void pause_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void pause_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
-    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
+    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win_pointer);
 
     if (trg_client_is_connected(priv->client))
         dispatch_rpc_async(priv->client, torrent_pause(build_json_id_array(priv->torrentTreeView)),
-                           on_generic_interactive_action_response, win);
+                           on_generic_interactive_action_response, win_pointer);
 }
 
 static void pause_all_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
@@ -471,13 +499,13 @@ static void resume_all_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void resume_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void resume_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
-    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
+    TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win_pointer);
 
     if (trg_client_is_connected(priv->client))
         dispatch_rpc_async(priv->client, torrent_start(build_json_id_array(priv->torrentTreeView)),
-                           on_generic_interactive_action_response, win);
+                           on_generic_interactive_action_response, win_pointer);
 }
 
 static void disconnect_cb(GtkWidget *w G_GNUC_UNUSED, gpointer data)
@@ -604,8 +632,9 @@ static TrgToolbar *trg_main_window_toolbar_new(TrgMainWindow *win)
     return toolBar;
 }
 
-static void reannounce_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void reannounce_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (trg_client_is_connected(priv->client))
@@ -614,8 +643,9 @@ static void reannounce_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void verify_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void verify_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (is_ready_for_torrent_action(win))
@@ -623,8 +653,9 @@ static void verify_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void start_now_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void start_now_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (is_ready_for_torrent_action(win))
@@ -633,8 +664,9 @@ static void start_now_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void up_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void up_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (priv->queuesEnabled && is_ready_for_torrent_action(win))
@@ -643,8 +675,9 @@ static void up_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void top_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void top_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (priv->queuesEnabled && is_ready_for_torrent_action(win))
@@ -653,8 +686,9 @@ static void top_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void bottom_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void bottom_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (priv->queuesEnabled && is_ready_for_torrent_action(win))
@@ -663,8 +697,9 @@ static void bottom_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
                            on_generic_interactive_action_response, win);
 }
 
-static void down_queue_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void down_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer)
 {
+    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
     if (priv->queuesEnabled && is_ready_for_torrent_action(win))
@@ -727,7 +762,7 @@ static gboolean is_ready_for_torrent_action(TrgMainWindow *win)
     return priv->selectedTorrentId >= 0 && trg_client_is_connected(priv->client);
 }
 
-static void move_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void move_cb(GSimpleAction *action, GVariant *parameter, gpointer win)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
@@ -736,7 +771,7 @@ static void move_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
             GTK_WIDGET(trg_torrent_move_dialog_new(win, priv->client, priv->torrentTreeView)));
 }
 
-static void remove_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void remove_cb(GSimpleAction *action, GVariant *parameter, gpointer win)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     GtkTreeSelection *selection;
@@ -756,7 +791,7 @@ static void remove_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
         json_array_unref(ids);
 }
 
-static void delete_cb(GtkWidget *w G_GNUC_UNUSED, TrgMainWindow *win)
+static void delete_cb(GSimpleAction *action, GVariant *parameter, gpointer win)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     GtkTreeSelection *selection;
@@ -1563,16 +1598,14 @@ static void clear_filter_entry_cb(GtkEntry *entry, GtkEntryIconPosition icon_pos
     gtk_entry_set_text(entry, "");
 }
 
-static GMenuItem *trg_imagemenuitem_new(GMenu *menu, const gchar *text, char *icon_name,
-                                        gboolean sensitive, GCallback cb, gpointer cbdata)
+static GMenuItem *trg_imagemenuitem_new(GMenu *menu,
+                                        const gchar *label,
+                                        const gchar *icon_name G_GNUC_UNUSED,
+                                        const gchar *action_name)
 {
 
-    GMenuItem *item = g_menu_item_new(text, "win.hello");
+    GMenuItem *item = g_menu_item_new(label, action_name);
     // TODO: Icons
-
-    // TODO: Actions
-    //g_signal_connect(item, "activate", cb, cbdata);
-    //gtk_widget_set_sensitive(item, sensitive);
     g_menu_append_item(menu, item);
 
     return item;
