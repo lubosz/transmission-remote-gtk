@@ -207,7 +207,7 @@ typedef struct {
     gchar **args;
 } TrgMainWindowPrivate;
 
-G_DEFINE_TYPE_WITH_PRIVATE(TrgMainWindow, trg_main_window, GTK_TYPE_WINDOW)
+G_DEFINE_TYPE_WITH_PRIVATE(TrgMainWindow, trg_main_window, GTK_TYPE_APPLICATION_WINDOW)
 
 enum {
     PROP_0,
