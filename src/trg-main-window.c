@@ -215,6 +215,14 @@ enum {
     PROP_MINIMISE_ON_START
 };
 
+static void print_hello(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    g_print("Hello, GTK!\n");
+}
+
+static GActionEntry actions[] = {
+    {"hello", print_hello, NULL, NULL, NULL},
+};
+
 static void reset_connect_args(TrgMainWindow *win)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
@@ -226,6 +234,7 @@ static void reset_connect_args(TrgMainWindow *win)
 
 static void trg_main_window_init(TrgMainWindow *self)
 {
+    g_action_map_add_action_entries(G_ACTION_MAP (self), actions, G_N_ELEMENTS(actions), self);
 }
 
 gint trg_mw_get_selected_torrent_id(TrgMainWindow *win)
@@ -1571,7 +1580,8 @@ static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name)
     gtk_container_add(GTK_CONTAINER(item), box);
     */
 
-    GMenuItem *item = g_menu_item_new(text, NULL);
+    printf("Making %s menu item with hello action.\n", text);
+    GMenuItem *item = g_menu_item_new(text, "hello");
 
     // TODO: Icons
 
