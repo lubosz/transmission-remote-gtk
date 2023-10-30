@@ -137,7 +137,6 @@ static void quit_cb(GtkWidget *w, gpointer data);
 static TrgMenuBar *trg_main_window_menu_bar_new(TrgMainWindow *win);
 static void clear_filter_entry_cb(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *event,
                                   gpointer user_data);
-static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name);
 static GMenuItem *trg_imagemenuitem_new(GMenu *menu, const gchar *text, char *icon_name,
                                         gboolean sensitive, GCallback cb, gpointer cbdata);
 static void set_limit_cb(GtkWidget *w, TrgMainWindow *win);
@@ -1564,34 +1563,12 @@ static void clear_filter_entry_cb(GtkEntry *entry, GtkEntryIconPosition icon_pos
     gtk_entry_set_text(entry, "");
 }
 
-static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name)
-{
-    /*
-    GtkWidget *item, *box, *label, *icon;
-
-    item = gtk_menu_item_new();
-    box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    icon = gtk_image_new_from_icon_name(icon_name, GTK_ICON_SIZE_MENU);
-    label = gtk_label_new(text);
-
-    gtk_container_add(GTK_CONTAINER(box), icon);
-    gtk_container_add(GTK_CONTAINER(box), label);
-
-    gtk_container_add(GTK_CONTAINER(item), box);
-    */
-
-    GMenuItem *item = g_menu_item_new(text, "win.hello");
-
-    // TODO: Icons
-
-    return item;
-}
-
 static GMenuItem *trg_imagemenuitem_new(GMenu *menu, const gchar *text, char *icon_name,
                                         gboolean sensitive, GCallback cb, gpointer cbdata)
 {
 
-    GMenuItem *item = trg_imagemenuitem_box(text, icon_name);
+    GMenuItem *item = g_menu_item_new(text, "win.hello");
+    // TODO: Icons
 
     // TODO: Actions
     //g_signal_connect(item, "activate", cb, cbdata);
@@ -1702,7 +1679,8 @@ static GMenuItem *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
     if (get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &t, NULL))
         selected_pri = torrent_get_bandwidth_priority(t);
 
-    toplevel = trg_imagemenuitem_box(_("Priority"), "network-workgroup");
+    toplevel = g_menu_item_new(_("Priority"), "win.hello");
+    // TODO: Icons "network-workgroup"
 
     menu = g_menu_new();
 
@@ -1739,7 +1717,8 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
         ? json_object_get_int_member(current, speedKey)
         : -1;
 
-    toplevel = trg_imagemenuitem_box(title, "network-workgroup");
+    toplevel = g_menu_item_new(title, "win.hello");
+    // TODO: Icons "network-workgroup"
 
     menu = g_menu_new();
 
