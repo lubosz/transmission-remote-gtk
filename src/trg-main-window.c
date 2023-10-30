@@ -1571,7 +1571,7 @@ static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name)
     gtk_container_add(GTK_CONTAINER(item), box);
     */
 
-    GMenuItem *item = g_menu_item_new(text, "");
+    GMenuItem *item = g_menu_item_new(text, NULL);
 
     // TODO: Icons
 
@@ -1655,7 +1655,7 @@ static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 current
     trg_strlspeed(speed, limit);
 
     // item = gtk_check_menu_item_new_with_label(speed);
-    item = g_menu_item_new(speed, "");
+    item = g_menu_item_new(speed, NULL);
 
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER((gint)limit));
     // TODO: Actions
@@ -1669,7 +1669,7 @@ static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 current
 static GMenuItem *priority_menu_item_new(TrgMainWindow *win, GMenu *menu, const gchar *label,
                                          gint value, gint current_value)
 {
-    GMenuItem *item = g_menu_item_new(label, "");
+    GMenuItem *item = g_menu_item_new(label, NULL);
 
     // TODO: Actions!
     // gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), value == current_value);
@@ -1860,7 +1860,7 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
             gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
             cmds_model = G_MENU(menu);
         } else {
-            GMenuItem *cmds_item = g_menu_item_new(_("Execute"), "");
+            GMenuItem *cmds_item = g_menu_item_new(_("Execute"), NULL);
 
             cmds_model = g_menu_new();
             g_menu_item_set_submenu(cmds_item, G_MENU_MODEL(cmds_model));
