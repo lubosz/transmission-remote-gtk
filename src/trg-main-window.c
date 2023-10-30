@@ -134,7 +134,7 @@ static GMenuItem *trg_imagemenuitem_new(GMenu *menu,
                                         const gchar *icon_name,
                                         const gchar *action_name);
 static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
-                                 gfloat limit);
+                                 gchar *enabledKey, gchar *speedKey, gint limit);
 static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
                                  gchar *speedKey, GVariant *ids_variant);
 static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
@@ -250,7 +250,7 @@ static GActionEntry actions[] = {
     {"queue-top", top_queue_cb, NULL, NULL, NULL},
     {"queue-bottom", bottom_queue_cb, NULL, NULL, NULL},
     {"exec-cmd", exec_cmd_cb, NULL, NULL, NULL},
-    {"set-limit", set_limit_cb, "(ssaii)", NULL, NULL},
+    {"set-limit", set_limit_cb, "(ssi)", NULL, NULL},
     {"set-priority", set_priority_cb, NULL, NULL, NULL},
 };
 
@@ -1620,18 +1620,11 @@ static GMenuItem *trg_imagemenuitem_new(GMenu *menu,
 
 static void set_limit_cb(GSimpleAction *action, GVariant *parameter, gpointer win)
 {
-
-    printf("set_limit_cb called!!11s\n");
-
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
-    // TODO: Action parameters
-    GObject *w = NULL;
-    GtkWidget *parent = gtk_widget_get_parent(w);
-
-    gint speed = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "limit"));
-    gchar *speedKey = g_object_get_data(G_OBJECT(parent), "speedKey");
-    gchar *enabledKey = g_object_get_data(G_OBJECT(parent), "enabledKey");
+    gchar *speedKey, *enabledKey;
+    gint speed;
+    g_variant_get(parameter, "(ssi)", &speedKey, &enabledKey, &speed);
 
     JsonArray *limitIds = build_json_id_array(TRG_TORRENT_TREE_VIEW(priv->torrentTreeView));
 
@@ -1680,7 +1673,7 @@ static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer
 }
 
 static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
-                                 gfloat limit)
+                                 gchar *enabledKey, gchar *speedKey, gint limit)
 {
     char speed[32];
     GMenuItem *item;
@@ -1690,10 +1683,12 @@ static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 current
 
     item = g_menu_item_new(speed, NULL);
 
+    GVariant *limit_params = g_variant_new("(ssi)", speedKey, enabledKey, (gint)limit);
+    g_menu_item_set_action_and_target_value(item, "win.set-limit", limit_params);
+
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER((gint)limit));
     // TODO: Actions
     //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), active);
-    //g_signal_connect(item, "activate", G_CALLBACK(set_limit_cb), win);
 
     g_menu_append_item(menu, item);
     return item;
@@ -1754,14 +1749,11 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
     GMenu *menu;
     gint64 limit;
 
-    GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->torrentTreeView));
-
-    gint selected_rows = gtk_tree_selection_count_selected_rows(selection);
-
-    if (selected_rows > 0)
+    if (ids_variant)
         get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &current,
                          &iter);
     else
+        // TODO: This is only done for the tray icon
         current = trg_client_get_session(client);
 
     limit = json_object_get_boolean_member(current, enabledKey)
@@ -1773,50 +1765,40 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
 
     menu = g_menu_new();
 
-    // TODO: Action parameters
-//    g_object_set_data_full(G_OBJECT(menu), "speedKey", g_strdup(speedKey), g_free);
-//    g_object_set_data_full(G_OBJECT(menu), "enabledKey", g_strdup(enabledKey), g_free);
-//    g_object_set_data_full(G_OBJECT(menu), "limit-ids", ids, (GDestroyNotify)json_array_unref);
-
     g_print("ids_variant: %s\n", g_variant_print(ids_variant, TRUE));
 
-    GVariant *variant = g_variant_new("(ssi)", speedKey, enabledKey, -1);
+    GVariant *limit_params = g_variant_new("(ssi)", speedKey, enabledKey, -1);
 
-    // Just to verify the content
-    gchar *printed_variant = g_variant_print(variant, TRUE);
-    g_print("%s\n", printed_variant);
-    g_free(printed_variant);
+    item = g_menu_item_new(_("No Limit"), NULL);
 
-    printf("speedKey: %s enabledKey: %s\n", speedKey, enabledKey);
+    g_menu_item_set_action_and_target_value(item, "win.set-limit", limit_params);
 
-    item = g_menu_item_new(_("No Limit"), "win.set-limit");
     //TODO: Active
     //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), limit < 0);
-    g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER(-1));
     g_menu_append_item(menu, item);
 
     // TODO: Separator
     // g_menu_append_item(menu, gtk_separator_menu_item_new());
 
-    limit_item_new(win, menu, limit, 0);
-    limit_item_new(win, menu, limit, 5);
-    limit_item_new(win, menu, limit, 10);
-    limit_item_new(win, menu, limit, 25);
-    limit_item_new(win, menu, limit, 50);
-    limit_item_new(win, menu, limit, 75);
-    limit_item_new(win, menu, limit, 100);
-    limit_item_new(win, menu, limit, 150);
-    limit_item_new(win, menu, limit, 200);
-    limit_item_new(win, menu, limit, 300);
-    limit_item_new(win, menu, limit, 400);
-    limit_item_new(win, menu, limit, 500);
-    limit_item_new(win, menu, limit, 750);
-    limit_item_new(win, menu, limit, 1024);
-    limit_item_new(win, menu, limit, 1280);
-    limit_item_new(win, menu, limit, 1536);
-    limit_item_new(win, menu, limit, 2048);
-    limit_item_new(win, menu, limit, 2560);
-    limit_item_new(win, menu, limit, 3072);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 0);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 5);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 10);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 25);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 50);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 75);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 100);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 150);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 200);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 300);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 400);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 500);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 750);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 1024);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 1280);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 1536);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 2048);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 2560);
+    limit_item_new(win, menu, limit, speedKey, enabledKey, 3072);
 
     g_menu_item_set_submenu(toplevel, G_MENU_MODEL(menu));
 
