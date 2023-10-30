@@ -137,13 +137,13 @@ static void quit_cb(GtkWidget *w, gpointer data);
 static TrgMenuBar *trg_main_window_menu_bar_new(TrgMainWindow *win);
 static void clear_filter_entry_cb(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *event,
                                   gpointer user_data);
-static GtkWidget *trg_imagemenuitem_box(const gchar *text, char *icon_name);
-static GtkWidget *trg_imagemenuitem_new(GtkMenuShell *shell, const gchar *text, char *icon_name,
+static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name);
+static GMenuItem *trg_imagemenuitem_new(GMenu *menu, const gchar *text, char *icon_name,
                                         gboolean sensitive, GCallback cb, gpointer cbdata);
 static void set_limit_cb(GtkWidget *w, TrgMainWindow *win);
-static GtkWidget *limit_item_new(TrgMainWindow *win, GtkWidget *menu, gint64 currentLimit,
+static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
                                  gfloat limit);
-static GtkWidget *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
+static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
                                  gchar *speedKey, JsonArray *ids);
 static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
                                      TrgMainWindow *win);
@@ -1555,8 +1555,9 @@ static void clear_filter_entry_cb(GtkEntry *entry, GtkEntryIconPosition icon_pos
     gtk_entry_set_text(entry, "");
 }
 
-static GtkWidget *trg_imagemenuitem_box(const gchar *text, char *icon_name)
+static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name)
 {
+    /*
     GtkWidget *item, *box, *label, *icon;
 
     item = gtk_menu_item_new();
@@ -1568,18 +1569,25 @@ static GtkWidget *trg_imagemenuitem_box(const gchar *text, char *icon_name)
     gtk_container_add(GTK_CONTAINER(box), label);
 
     gtk_container_add(GTK_CONTAINER(item), box);
+    */
+
+    GMenuItem *item = g_menu_item_new(text, "");
+
+    // TODO: Icons
 
     return item;
 }
 
-static GtkWidget *trg_imagemenuitem_new(GtkMenuShell *shell, const gchar *text, char *icon_name,
+static GMenuItem *trg_imagemenuitem_new(GMenu *menu, const gchar *text, char *icon_name,
                                         gboolean sensitive, GCallback cb, gpointer cbdata)
 {
 
-    GtkWidget *item = trg_imagemenuitem_box(text, icon_name);
-    g_signal_connect(item, "activate", cb, cbdata);
-    gtk_widget_set_sensitive(item, sensitive);
-    gtk_menu_shell_append(shell, item);
+    GMenuItem *item = trg_imagemenuitem_box(text, icon_name);
+
+    // TODO: Actions
+    //g_signal_connect(item, "activate", cb, cbdata);
+    //gtk_widget_set_sensitive(item, sensitive);
+    g_menu_append_item(menu, item);
 
     return item;
 }
@@ -1637,73 +1645,79 @@ static void set_priority_cb(GtkWidget *w, TrgMainWindow *win)
     dispatch_rpc_async(priv->client, req, on_generic_interactive_action_response, win);
 }
 
-static GtkWidget *limit_item_new(TrgMainWindow *win, GtkWidget *menu, gint64 currentLimit,
+static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
                                  gfloat limit)
 {
     char speed[32];
-    GtkWidget *item;
+    GMenuItem *item;
     gboolean active = limit < 0 ? FALSE : (currentLimit == (gint64)limit);
 
     trg_strlspeed(speed, limit);
 
-    item = gtk_check_menu_item_new_with_label(speed);
+    // item = gtk_check_menu_item_new_with_label(speed);
+    item = g_menu_item_new(speed, "");
 
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER((gint)limit));
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), active);
-    g_signal_connect(item, "activate", G_CALLBACK(set_limit_cb), win);
+    // TODO: Actions
+    //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), active);
+    //g_signal_connect(item, "activate", G_CALLBACK(set_limit_cb), win);
 
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    g_menu_append_item(menu, item);
     return item;
 }
 
-static GtkWidget *priority_menu_item_new(TrgMainWindow *win, GtkMenuShell *menu, const gchar *label,
+static GMenuItem *priority_menu_item_new(TrgMainWindow *win, GMenu *menu, const gchar *label,
                                          gint value, gint current_value)
 {
-    GtkWidget *item = gtk_check_menu_item_new_with_label(label);
+    GMenuItem *item = g_menu_item_new(label, "");
 
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), value == current_value);
+    // TODO: Actions!
+    // gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), value == current_value);
     g_object_set_data(G_OBJECT(item), "priority", GINT_TO_POINTER(value));
-    g_signal_connect(item, "activate", G_CALLBACK(set_priority_cb), win);
+    // g_signal_connect(item, "activate", G_CALLBACK(set_priority_cb), win);
 
-    gtk_menu_shell_append(menu, item);
+    g_menu_append_item(menu, item);
 
     return item;
 }
 
-static GtkWidget *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
+static GMenuItem *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     TrgClient *client = priv->client;
     JsonObject *t = NULL;
     gint selected_pri = TR_PRI_UNSET;
-    GtkWidget *toplevel, *menu;
+    GMenuItem *toplevel;
+    GMenu *menu;
 
     if (get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &t, NULL))
         selected_pri = torrent_get_bandwidth_priority(t);
 
     toplevel = trg_imagemenuitem_box(_("Priority"), "network-workgroup");
 
-    menu = gtk_menu_new();
+    menu = g_menu_new();
 
     g_object_set_data_full(G_OBJECT(menu), "pri-ids", ids, (GDestroyNotify)json_array_unref);
 
-    priority_menu_item_new(win, GTK_MENU_SHELL(menu), _("High"), TR_PRI_HIGH, selected_pri);
-    priority_menu_item_new(win, GTK_MENU_SHELL(menu), _("Normal"), TR_PRI_NORMAL, selected_pri);
-    priority_menu_item_new(win, GTK_MENU_SHELL(menu), _("Low"), TR_PRI_LOW, selected_pri);
+    priority_menu_item_new(win, menu, _("High"), TR_PRI_HIGH, selected_pri);
+    priority_menu_item_new(win, menu, _("Normal"), TR_PRI_NORMAL, selected_pri);
+    priority_menu_item_new(win, menu, _("Low"), TR_PRI_LOW, selected_pri);
 
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(toplevel), menu);
+    g_menu_item_set_submenu(toplevel, G_MENU_MODEL(menu));
 
     return toplevel;
 }
 
-static GtkWidget *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
+static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enabledKey,
                                  gchar *speedKey, JsonArray *ids)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     TrgClient *client = priv->client;
     JsonObject *current = NULL;
     GtkTreeIter iter;
-    GtkWidget *toplevel, *menu, *item;
+    GtkWidget *item;
+    GMenuItem *toplevel;
+    GMenu *menu;
     gint64 limit;
 
     if (ids)
@@ -1718,7 +1732,7 @@ static GtkWidget *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
 
     toplevel = trg_imagemenuitem_box(title, "network-workgroup");
 
-    menu = gtk_menu_new();
+    menu = g_menu_new();
 
     g_object_set_data_full(G_OBJECT(menu), "speedKey", g_strdup(speedKey), g_free);
     g_object_set_data_full(G_OBJECT(menu), "enabledKey", g_strdup(enabledKey), g_free);
@@ -1752,7 +1766,7 @@ static GtkWidget *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
     limit_item_new(win, menu, limit, 2560);
     limit_item_new(win, menu, limit, 3072);
 
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(toplevel), menu);
+    g_menu_item_set_submenu(toplevel, G_MENU_MODEL(menu));
 
     return toplevel;
 }
@@ -1805,33 +1819,33 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
     TrgPrefs *prefs = trg_client_get_prefs(priv->client);
-    GtkWidget *menu;
+    GMenu *menu;
     gint n_cmds;
     JsonArray *ids;
     JsonArray *cmds;
 
-    menu = gtk_menu_new();
+    menu = g_menu_new();
     gtk_menu_set_reserve_toggle_size(GTK_MENU(menu), FALSE);
 
     ids = build_json_id_array(TRG_TORRENT_TREE_VIEW(treeview));
 
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Properties"), "document-properties", TRUE,
+    trg_imagemenuitem_new(menu, _("Properties"), "document-properties", TRUE,
                           G_CALLBACK(open_props_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Copy Magnet Link"), "edit-copy", TRUE,
+    trg_imagemenuitem_new(menu, _("Copy Magnet Link"), "edit-copy", TRUE,
                           G_CALLBACK(copy_magnetlink_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Resume"), "media-playback-start", TRUE,
+    trg_imagemenuitem_new(menu, _("Resume"), "media-playback-start", TRUE,
                           G_CALLBACK(resume_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Pause"), "media-playback-pause", TRUE,
+    trg_imagemenuitem_new(menu, _("Pause"), "media-playback-pause", TRUE,
                           G_CALLBACK(pause_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Verify"), "view-refresh", TRUE,
+    trg_imagemenuitem_new(menu, _("Verify"), "view-refresh", TRUE,
                           G_CALLBACK(verify_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Re-announce"), "network-server", TRUE,
+    trg_imagemenuitem_new(menu, _("Re-announce"), "network-server", TRUE,
                           G_CALLBACK(reannounce_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Move"), "drive-harddisk", TRUE,
+    trg_imagemenuitem_new(menu, _("Move"), "drive-harddisk", TRUE,
                           G_CALLBACK(move_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Remove"), "list-remove", TRUE,
+    trg_imagemenuitem_new(menu, _("Remove"), "list-remove", TRUE,
                           G_CALLBACK(remove_cb), win);
-    trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Remove and delete data"), "edit-delete", TRUE,
+    trg_imagemenuitem_new(menu, _("Remove and delete data"), "edit-delete", TRUE,
                           G_CALLBACK(delete_cb), win);
 
     cmds = trg_prefs_get_array(prefs, TRG_PREFS_KEY_EXEC_COMMANDS, TRG_PREFS_CONNECTION);
@@ -1839,24 +1853,24 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
 
     if (n_cmds > 0) {
         GList *cmds_list = json_array_get_elements(cmds);
-        GtkMenuShell *cmds_shell;
+        GMenu *cmds_model;
         GList *cmds_li;
 
         if (n_cmds < 3) {
             gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
-            cmds_shell = GTK_MENU_SHELL(menu);
+            cmds_model = G_MENU(menu);
         } else {
-            GtkMenuItem *cmds_menu = GTK_MENU_ITEM(gtk_menu_item_new_with_label(_("Execute")));
+            GMenuItem *cmds_item = g_menu_item_new(_("Execute"), "");
 
-            cmds_shell = GTK_MENU_SHELL(gtk_menu_new());
-            gtk_menu_item_set_submenu(GTK_MENU_ITEM(cmds_menu), GTK_WIDGET(cmds_shell));
-            gtk_menu_shell_append(GTK_MENU_SHELL(menu), GTK_WIDGET(cmds_menu));
+            cmds_model = g_menu_new();
+            g_menu_item_set_submenu(cmds_item, G_MENU_MODEL(cmds_model));
+            g_menu_append_item(menu, cmds_item);
         }
 
         for (cmds_li = cmds_list; cmds_li; cmds_li = g_list_next(cmds_li)) {
             JsonObject *cmd_obj = json_node_get_object((JsonNode *)cmds_li->data);
             const gchar *cmd_label = json_object_get_string_member(cmd_obj, "label");
-            GtkWidget *item = trg_imagemenuitem_new(cmds_shell, cmd_label, "system-run", TRUE,
+            GMenuItem *item = trg_imagemenuitem_new(cmds_model, cmd_label, "system-run", TRUE,
                                                     G_CALLBACK(exec_cmd_cb), win);
             g_object_set_data(G_OBJECT(item), "cmd-object", cmd_obj);
         }
@@ -1867,30 +1881,35 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
 
     if (priv->queuesEnabled) {
-        trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Start Now"), "media-playback-start", TRUE,
+        trg_imagemenuitem_new(menu, _("Start Now"), "media-playback-start", TRUE,
                               G_CALLBACK(start_now_cb), win);
-        trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Move Up Queue"), "go-up", TRUE,
+        trg_imagemenuitem_new(menu, _("Move Up Queue"), "go-up", TRUE,
                               G_CALLBACK(up_queue_cb), win);
-        trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Move Down Queue"), "go-down", TRUE,
+        trg_imagemenuitem_new(menu, _("Move Down Queue"), "go-down", TRUE,
                               G_CALLBACK(down_queue_cb), win);
-        trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Bottom Of Queue"), "go-bottom", TRUE,
+        trg_imagemenuitem_new(menu, _("Bottom Of Queue"), "go-bottom", TRUE,
                               G_CALLBACK(bottom_queue_cb), win);
-        trg_imagemenuitem_new(GTK_MENU_SHELL(menu), _("Top Of Queue"), "go-top", TRUE,
+        trg_imagemenuitem_new(menu, _("Top Of Queue"), "go-top", TRUE,
                               G_CALLBACK(top_queue_cb), win);
-        gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+        // TODO: Section instead of seperator
+        // g_menu_append_item(menu, gtk_separator_menu_item_new());
     }
 
-    gtk_menu_shell_append(
-        GTK_MENU_SHELL(menu),
+    g_menu_append_item(
+        menu,
         limit_menu_new(win, _("Down Limit"), FIELD_DOWNLOAD_LIMITED, FIELD_DOWNLOAD_LIMIT, ids));
-    gtk_menu_shell_append(
-        GTK_MENU_SHELL(menu),
+    g_menu_append_item(
+        menu,
         limit_menu_new(win, _("Up Limit"), FIELD_UPLOAD_LIMITED, FIELD_UPLOAD_LIMIT, ids));
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), priority_menu_new(win, ids));
+    g_menu_append_item(menu, priority_menu_new(win, ids));
 
-    gtk_widget_show_all(menu);
 
-    gtk_menu_popup_at_pointer(GTK_MENU(menu), (GdkEvent *)event);
+    GtkWidget *popover = gtk_popover_menu_new();
+    gtk_popover_bind_model(GTK_POPOVER(popover), G_MENU_MODEL(menu), NULL);
+
+    gtk_widget_show_all(popover);
+    gtk_popover_popup(GTK_POPOVER(popover));
+    gtk_popover_set_relative_to(GTK_POPOVER(popover), treeview);
 }
 
 #if HAVE_LIBAPPINDICATOR
