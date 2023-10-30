@@ -165,6 +165,8 @@ static void top_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer wi
 static void bottom_queue_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
 static void exec_cmd_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
 static void set_limit_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer win_pointer);
+
 
 struct _TrgMainWindow {
     GtkApplicationWindow parent;
@@ -225,11 +227,6 @@ enum {
     PROP_MINIMISE_ON_START
 };
 
-static void print_hello(GSimpleAction *action, GVariant *parameter, gpointer win_pointer) {
-    TrgMainWindow *win = TRG_MAIN_WINDOW(win_pointer);
-    g_print("Hello, GTK!\n");
-}
-
 static GActionEntry actions[] = {
     {"open-properties", open_props_cb, NULL, NULL, NULL},
     {"copy-magnet-link", copy_magnetlink_cb, NULL, NULL, NULL},
@@ -247,6 +244,7 @@ static GActionEntry actions[] = {
     {"queue-bottom", bottom_queue_cb, NULL, NULL, NULL},
     {"exec-cmd", exec_cmd_cb, NULL, NULL, NULL},
     {"set-limit", exec_cmd_cb, NULL, NULL, NULL},
+    {"set-priority", set_priority_cb, NULL, NULL, NULL},
 };
 
 static void reset_connect_args(TrgMainWindow *win)
@@ -1647,10 +1645,12 @@ static void set_limit_cb(GSimpleAction *action, GVariant *parameter, gpointer wi
         dispatch_rpc_async(priv->client, req, on_session_set, win);
 }
 
-static void set_priority_cb(GtkWidget *w, TrgMainWindow *win)
+static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer win)
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
+    // TODO: Action parameters
+    GtkWidget *w = NULL;
     GtkWidget *parent = gtk_widget_get_parent(w);
 
     gint priority = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "priority"));
@@ -1694,10 +1694,10 @@ static GMenuItem *priority_menu_item_new(TrgMainWindow *win, GMenu *menu, const 
 {
     GMenuItem *item = g_menu_item_new(label, NULL);
 
-    // TODO: Actions!
+    // TODO: Active
     // gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), value == current_value);
+    // TODO: Action Parameters
     g_object_set_data(G_OBJECT(item), "priority", GINT_TO_POINTER(value));
-    // g_signal_connect(item, "activate", G_CALLBACK(set_priority_cb), win);
 
     g_menu_append_item(menu, item);
 
@@ -1716,7 +1716,7 @@ static GMenuItem *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
     if (get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &t, NULL))
         selected_pri = torrent_get_bandwidth_priority(t);
 
-    toplevel = g_menu_item_new(_("Priority"), "win.hello");
+    toplevel = g_menu_item_new(_("Priority"), "win.set-priority");
     // TODO: Icons "network-workgroup"
 
     menu = g_menu_new();
@@ -1859,15 +1859,15 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
 
     ids = build_json_id_array(TRG_TORRENT_TREE_VIEW(treeview));
 
-    trg_imagemenuitem_new(menu, _("Properties"), "document-properties", "open-properties");
-    trg_imagemenuitem_new(menu, _("Copy Magnet Link"), "edit-copy", "copy-magnet-link");
-    trg_imagemenuitem_new(menu, _("Resume"), "media-playback-start", "resume");
-    trg_imagemenuitem_new(menu, _("Pause"), "media-playback-pause", "pause");
-    trg_imagemenuitem_new(menu, _("Verify"), "view-refresh", "verify");
-    trg_imagemenuitem_new(menu, _("Re-announce"), "network-server", "reannounce");
-    trg_imagemenuitem_new(menu, _("Move"), "drive-harddisk", "move");
-    trg_imagemenuitem_new(menu, _("Remove"), "list-remove", "remove");
-    trg_imagemenuitem_new(menu, _("Remove and delete data"), "edit-delete", "delete");
+    trg_imagemenuitem_new(menu, _("Properties"), "document-properties", "win.open-properties");
+    trg_imagemenuitem_new(menu, _("Copy Magnet Link"), "edit-copy", "win.copy-magnet-link");
+    trg_imagemenuitem_new(menu, _("Resume"), "media-playback-start", "win.resume");
+    trg_imagemenuitem_new(menu, _("Pause"), "media-playback-pause", "win.pause");
+    trg_imagemenuitem_new(menu, _("Verify"), "view-refresh", "win.verify");
+    trg_imagemenuitem_new(menu, _("Re-announce"), "network-server", "win.reannounce");
+    trg_imagemenuitem_new(menu, _("Move"), "drive-harddisk", "win.move");
+    trg_imagemenuitem_new(menu, _("Remove"), "list-remove", "win.remove");
+    trg_imagemenuitem_new(menu, _("Remove and delete data"), "edit-delete", "win.delete");
 
     cmds = trg_prefs_get_array(prefs, TRG_PREFS_KEY_EXEC_COMMANDS, TRG_PREFS_CONNECTION);
     n_cmds = json_array_get_length(cmds);
@@ -1892,7 +1892,7 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
         for (cmds_li = cmds_list; cmds_li; cmds_li = g_list_next(cmds_li)) {
             JsonObject *cmd_obj = json_node_get_object((JsonNode *)cmds_li->data);
             const gchar *cmd_label = json_object_get_string_member(cmd_obj, "label");
-            GMenuItem *item = trg_imagemenuitem_new(cmds_model, cmd_label, "system-run", "exec-cmd");
+            GMenuItem *item = trg_imagemenuitem_new(cmds_model, cmd_label, "system-run", "win.exec-cmd");
             // TODO: Action parameter
             g_object_set_data(G_OBJECT(item), "cmd-object", cmd_obj);
         }
@@ -1904,11 +1904,11 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
     // g_menu_append_item(menu, gtk_separator_menu_item_new());
 
     if (priv->queuesEnabled) {
-        trg_imagemenuitem_new(menu, _("Start Now"), "media-playback-start", "start-now");
-        trg_imagemenuitem_new(menu, _("Move Up Queue"), "go-up", "queue-up");
-        trg_imagemenuitem_new(menu, _("Move Down Queue"), "go-down", "queue-down");
-        trg_imagemenuitem_new(menu, _("Bottom Of Queue"), "go-bottom", "queue-top");
-        trg_imagemenuitem_new(menu, _("Top Of Queue"), "go-top", "queue-bottom");
+        trg_imagemenuitem_new(menu, _("Start Now"), "media-playback-start", "win.start-now");
+        trg_imagemenuitem_new(menu, _("Move Up Queue"), "go-up", "win.queue-up");
+        trg_imagemenuitem_new(menu, _("Move Down Queue"), "go-down", "win.queue-down");
+        trg_imagemenuitem_new(menu, _("Bottom Of Queue"), "go-bottom", "win.queue-top");
+        trg_imagemenuitem_new(menu, _("Top Of Queue"), "go-top", "win.queue-bottom");
         // TODO: Section instead of seperator
         // g_menu_append_item(menu, gtk_separator_menu_item_new());
     }
