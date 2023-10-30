@@ -1661,7 +1661,7 @@ static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer
     JsonNode *req = NULL;
     JsonObject *args;
 
-    req = torrent_set((JsonArray *)limitIds);
+    req = torrent_set(limitIds);
 
     args = node_get_arguments(req);
 
