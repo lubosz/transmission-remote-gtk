@@ -251,7 +251,7 @@ static GActionEntry actions[] = {
     {"queue-bottom", bottom_queue_cb, NULL, NULL, NULL},
     {"exec-cmd", exec_cmd_cb, NULL, NULL, NULL},
     {"set-limit", set_limit_cb, "(ssi)", NULL, NULL},
-    {"set-priority", set_priority_cb, NULL, NULL, NULL},
+    {"set-priority", set_priority_cb, "i", NULL, NULL},
 };
 
 static void reset_connect_args(TrgMainWindow *win)
@@ -1653,12 +1653,10 @@ static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer
 {
     TrgMainWindowPrivate *priv = trg_main_window_get_instance_private(win);
 
-    // TODO: Action parameters
-    GtkWidget *w = NULL;
-    GtkWidget *parent = gtk_widget_get_parent(w);
+    gint priority;
+    g_variant_get(parameter, "i", &priority);
 
-    gint priority = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "priority"));
-    gpointer limitIds = g_object_get_data(G_OBJECT(parent), "pri-ids");
+    JsonArray *limitIds = build_json_id_array(TRG_TORRENT_TREE_VIEW(priv->torrentTreeView));
 
     JsonNode *req = NULL;
     JsonObject *args;
@@ -1687,7 +1685,7 @@ static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 current
     g_menu_item_set_action_and_target_value(item, "win.set-limit", limit_params);
 
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER((gint)limit));
-    // TODO: Actions
+    // TODO: Active
     //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), active);
 
     g_menu_append_item(menu, item);
@@ -1697,12 +1695,14 @@ static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 current
 static GMenuItem *priority_menu_item_new(TrgMainWindow *win, GMenu *menu, const gchar *label,
                                          gint value, gint current_value)
 {
-    GMenuItem *item = g_menu_item_new(label, NULL);
+    GMenuItem *item = g_menu_item_new(label, "win.set-priority");
+
+    GVariant *priority_params = g_variant_new("i", value);
+    //g_menu_item_set_action_and_target_value(item, "win.set-limit", priority_params);
+    g_menu_item_set_attribute_value(item, G_MENU_ATTRIBUTE_TARGET, priority_params);
 
     // TODO: Active
     // gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), value == current_value);
-    // TODO: Action Parameters
-    g_object_set_data(G_OBJECT(item), "priority", GINT_TO_POINTER(value));
 
     g_menu_append_item(menu, item);
 
@@ -1721,12 +1721,12 @@ static GMenuItem *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
     if (get_torrent_data(trg_client_get_torrent_table(client), priv->selectedTorrentId, &t, NULL))
         selected_pri = torrent_get_bandwidth_priority(t);
 
-    toplevel = g_menu_item_new(_("Priority"), "win.set-priority");
+    toplevel = g_menu_item_new(_("Priority"), NULL);
     // TODO: Icons "network-workgroup"
 
     menu = g_menu_new();
 
-    g_object_set_data_full(G_OBJECT(menu), "pri-ids", ids, (GDestroyNotify)json_array_unref);
+    //g_object_set_data_full(G_OBJECT(menu), "pri-ids", ids, (GDestroyNotify)json_array_unref);
 
     priority_menu_item_new(win, menu, _("High"), TR_PRI_HIGH, selected_pri);
     priority_menu_item_new(win, menu, _("Normal"), TR_PRI_NORMAL, selected_pri);
