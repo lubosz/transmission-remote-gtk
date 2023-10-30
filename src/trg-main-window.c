@@ -234,6 +234,15 @@ typedef struct {
     gint limit;
 } LimitActionParameter;
 
+static void
+change_priority_radio_state (GSimpleAction *action,
+                    GVariant      *state,
+                    gpointer       user_data)
+{
+    g_print("change_priority_radio_state: %s\n", g_variant_print(state, TRUE));
+    g_simple_action_set_state (action, state);
+}
+
 static GActionEntry actions[] = {
     {"open-properties", open_props_cb, NULL, NULL, NULL},
     {"copy-magnet-link", copy_magnetlink_cb, NULL, NULL, NULL},
@@ -251,7 +260,7 @@ static GActionEntry actions[] = {
     {"queue-bottom", bottom_queue_cb, NULL, NULL, NULL},
     {"exec-cmd", exec_cmd_cb, NULL, NULL, NULL},
     {"set-limit", set_limit_cb, "(ssi)", NULL, NULL},
-    {"set-priority", set_priority_cb, "i", NULL, NULL},
+    {"set-priority", set_priority_cb, "i", "0", change_priority_radio_state},
 };
 
 static void reset_connect_args(TrgMainWindow *win)
@@ -1655,6 +1664,7 @@ static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer
 
     gint priority;
     g_variant_get(parameter, "i", &priority);
+    printf("set_priority_cb: got %d\n", priority);
 
     JsonArray *limitIds = build_json_id_array(TRG_TORRENT_TREE_VIEW(priv->torrentTreeView));
 
@@ -1668,6 +1678,9 @@ static void set_priority_cb(GSimpleAction *action, GVariant *parameter, gpointer
     json_object_set_int_member(args, FIELD_BANDWIDTH_PRIORITY, priority);
 
     dispatch_rpc_async(priv->client, req, on_generic_interactive_action_response, win);
+
+    // Change combo box state
+    g_action_change_state(G_ACTION(action), parameter);
 }
 
 static GMenuItem *limit_item_new(TrgMainWindow *win, GMenu *menu, gint64 currentLimit,
@@ -1727,6 +1740,18 @@ static GMenuItem *priority_menu_new(TrgMainWindow *win, JsonArray *ids)
     menu = g_menu_new();
 
     //g_object_set_data_full(G_OBJECT(menu), "pri-ids", ids, (GDestroyNotify)json_array_unref);
+
+    printf("The current priority is %d\n", selected_pri);
+
+    GAction *action = g_action_map_lookup_action(G_ACTION_MAP(win), "set-priority");
+    g_assert(action != NULL);
+    g_assert(G_IS_ACTION(action));
+
+    // Select the current priority combo box
+    if (selected_pri != TR_PRI_UNSET) {
+        GVariant *current_priority = g_variant_new("i", selected_pri);
+        g_action_change_state(action, current_priority);
+    }
 
     priority_menu_item_new(win, menu, _("High"), TR_PRI_HIGH, selected_pri);
     priority_menu_item_new(win, menu, _("Normal"), TR_PRI_NORMAL, selected_pri);
