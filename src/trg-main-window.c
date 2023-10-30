@@ -1725,7 +1725,7 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
     TrgClient *client = priv->client;
     JsonObject *current = NULL;
     GtkTreeIter iter;
-    GtkWidget *item;
+    GMenuItem *item;
     GMenuItem *toplevel;
     GMenu *menu;
     gint64 limit;
@@ -1748,13 +1748,15 @@ static GMenuItem *limit_menu_new(TrgMainWindow *win, gchar *title, gchar *enable
     g_object_set_data_full(G_OBJECT(menu), "enabledKey", g_strdup(enabledKey), g_free);
     g_object_set_data_full(G_OBJECT(menu), "limit-ids", ids, (GDestroyNotify)json_array_unref);
 
-    item = gtk_check_menu_item_new_with_label(_("No Limit"));
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), limit < 0);
+    item = g_menu_item_new(_("No Limit"), NULL);
+    //TODO: Actions
+    //gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), limit < 0);
     g_object_set_data(G_OBJECT(item), "limit", GINT_TO_POINTER(-1));
-    g_signal_connect(item, "activate", G_CALLBACK(set_limit_cb), win);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    //g_signal_connect(item, "activate", G_CALLBACK(set_limit_cb), win);
+    g_menu_append_item(menu, item);
 
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+    // TODO: Separator
+    // g_menu_append_item(menu, gtk_separator_menu_item_new());
 
     limit_item_new(win, menu, limit, 0);
     limit_item_new(win, menu, limit, 5);
@@ -1835,7 +1837,7 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
     JsonArray *cmds;
 
     menu = g_menu_new();
-    gtk_menu_set_reserve_toggle_size(GTK_MENU(menu), FALSE);
+    // gtk_menu_set_reserve_toggle_size(GTK_MENU(menu), FALSE);
 
     ids = build_json_id_array(TRG_TORRENT_TREE_VIEW(treeview));
 
@@ -1867,7 +1869,8 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
         GList *cmds_li;
 
         if (n_cmds < 3) {
-            gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+            // TODO: Separator
+            //g_menu_append_item(menu, gtk_separator_menu_item_new());
             cmds_model = G_MENU(menu);
         } else {
             GMenuItem *cmds_item = g_menu_item_new(_("Execute"), NULL);
@@ -1888,7 +1891,8 @@ static void trg_torrent_tv_view_menu(GtkWidget *treeview, GdkEventButton *event,
         g_list_free(cmds_list);
     }
 
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+    // TODO: Separator
+    // g_menu_append_item(menu, gtk_separator_menu_item_new());
 
     if (priv->queuesEnabled) {
         trg_imagemenuitem_new(menu, _("Start Now"), "media-playback-start", TRUE,
