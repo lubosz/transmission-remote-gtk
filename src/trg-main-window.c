@@ -1580,8 +1580,7 @@ static GMenuItem *trg_imagemenuitem_box(const gchar *text, char *icon_name)
     gtk_container_add(GTK_CONTAINER(item), box);
     */
 
-    printf("Making %s menu item with hello action.\n", text);
-    GMenuItem *item = g_menu_item_new(text, "hello");
+    GMenuItem *item = g_menu_item_new(text, "win.hello");
 
     // TODO: Icons
 
